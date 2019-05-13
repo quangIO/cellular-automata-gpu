@@ -2,7 +2,10 @@
 #include <vector>
 #include <memory>
 #include <cassert>
-#define SIMULATION_SIZE 1000
+
+#ifndef SIMULATION_SIZE
+#define SIMULATION_SIZE  1000
+#endif
 
 namespace State {
     static af::array grid(SIMULATION_SIZE, SIMULATION_SIZE); // NOLINT(cert-err58-cpp)
@@ -10,30 +13,55 @@ namespace State {
 
 
 namespace Rules {
-    namespace Masks {
+    namespace Diffusion {
         namespace {
-            std::vector<af::array> spreadMasks;
+            af::array mask;
+            void generate(const float *probability) {
+                mask = af::array(SIMULATION_SIZE, SIMULATION_SIZE, probability);
+            }
+        }
+    }
+    namespace Breed {
+        namespace {
+            std::vector<af::array> masks;
+
             void generate(const std::vector<float> &factors) {
-                for (float factor: factors){
+                for (float factor: factors) {
                     assert(factor > 0 && factor < 1);
-                    spreadMasks.emplace_back(af::constant(1 - factor, SIMULATION_SIZE, SIMULATION_SIZE));
+                    masks.emplace_back(af::constant(1 - factor, SIMULATION_SIZE, SIMULATION_SIZE));
                 }
             }
         }
     }
+
+    namespace Spread {
+        namespace {
+            int threshold = 100;
+            float factor = .003;
+            af::array getRegionSizes(const af::array &regions, uint nRegions) {
+                af::array ret = af::constant(0, SIMULATION_SIZE, SIMULATION_SIZE);
+                for (uint i = 1; i <= nRegions; ++i) {
+                    auto current = (regions == i).as(f32);
+                    ret = ret + current * af::count<float >(current);
+                }
+                return ret;
+            }
+        }
+    }
+
     namespace Kernels {
         namespace {
             std::vector<af::array> neighboursCountKernels;
 
-            void generate(unsigned nLayers = 1) {
-                for (size_t i = 1; i <= nLayers; ++i) {
-                    size_t m = 1u << i | 1u;
+            void generate(uint nLayers = 1) {
+                for (uint i = 1; i <= nLayers; ++i) {
+                    uint m = 1u << i | 1u;
                     m *= m;
                     auto arr = std::make_unique<float[]>(m);
-                    for (size_t j = 0; j < m; ++j)
+                    for (uint j = 0; j < m; ++j)
                         arr[j] = 1.0f;
                     arr[m >> 1u] = 0.0;
-                    int size = (1u << i) | 1u;
+                    uint size = (1u << i) | 1u;
                     const af::array t(size, size, arr.get());
                     neighboursCountKernels.emplace_back(t);
                 }
@@ -41,16 +69,20 @@ namespace Rules {
         }
     }
 
-    static af::array countNeighbours(unsigned offset = 0, const af::array &grid = State::grid) {
-        af::array neighbours = af::convolve(grid, Kernels::neighboursCountKernels[offset]);
-        return neighbours;
-    }
 
-    static void init() {
-        Kernels::generate();
-        Masks::generate({.01});
-    }
+    namespace {
+        af::array countNeighbours(uint offset = 0, const af::array &grid = State::grid) {
+            af::array neighbours = af::convolve(grid, Kernels::neighboursCountKernels[offset]);
+            return neighbours;
+        }
 
-    void setSpreadFactor(float value) {
+        inline af::array urbanize(const af::array& probabilities) {
+            return af::randu(SIMULATION_SIZE, SIMULATION_SIZE) <= probabilities;
+        }
+
+        void init() {
+            Kernels::generate();
+            Breed::generate({.01});
+        }
     }
 };
