@@ -1,3 +1,4 @@
+#pragma once
 #include <arrayfire.h>
 #include <vector>
 #include <memory>
@@ -7,16 +8,15 @@
 #define SIMULATION_SIZE  1000
 #endif
 
-namespace State {
-    static af::array grid(SIMULATION_SIZE, SIMULATION_SIZE); // NOLINT(cert-err58-cpp)
-}
+typedef unsigned uint;
 
 
 namespace Rules {
     namespace Diffusion {
         namespace {
             af::array mask;
-            void generate(const float *probability) {
+
+            void generate(float *probability) {
                 mask = af::array(SIMULATION_SIZE, SIMULATION_SIZE, probability);
             }
         }
@@ -38,14 +38,6 @@ namespace Rules {
         namespace {
             int threshold = 100;
             float factor = .003;
-            af::array getRegionSizes(const af::array &regions, uint nRegions) {
-                af::array ret = af::constant(0, SIMULATION_SIZE, SIMULATION_SIZE);
-                for (uint i = 1; i <= nRegions; ++i) {
-                    auto current = (regions == i).as(f32);
-                    ret = ret + current * af::count<float >(current);
-                }
-                return ret;
-            }
         }
     }
 
@@ -71,13 +63,41 @@ namespace Rules {
 
 
     namespace {
-        af::array countNeighbours(uint offset = 0, const af::array &grid = State::grid) {
+        inline af::array countNeighbours(const af::array &grid, uint offset = 0) {
             af::array neighbours = af::convolve(grid, Kernels::neighboursCountKernels[offset]);
             return neighbours;
         }
 
-        inline af::array urbanize(const af::array& probabilities) {
+        inline af::array getRegionSizes(const af::array &regions, uint nRegions) {
+            af::array ret = af::constant(0, SIMULATION_SIZE, SIMULATION_SIZE);
+            for (uint i = 1; i <= nRegions; ++i) {
+                auto current = (regions == i).as(f32);
+                ret = ret + current * af::count<float>(current);
+            }
+            return ret;
+        }
+
+        inline af::array urbanize(const af::array &probabilities) {
             return af::randu(SIMULATION_SIZE, SIMULATION_SIZE) <= probabilities;
+        }
+
+        void initWith(const std::string &path = "config.ini") {
+            INIReader reader(path);
+            {
+                std::string factorsStr = reader.Get("breed", "factors", "0.01");
+                std::stringstream s(factorsStr);
+                std::vector<float> factors;
+                float current;
+                while (s >> current) factors.push_back(current);
+                Breed::generate(factors);
+            }
+            {
+                Spread::threshold = reader.GetInteger("spread", "threshold", Spread::threshold);
+                Spread::factor = reader.GetReal("spread", "factor", Spread::factor);
+            }
+            {
+                std::string imagePath = reader.Get("initial", "image", "state.png"); // TODO load initial image
+            }
         }
 
         void init() {
@@ -85,4 +105,4 @@ namespace Rules {
             Breed::generate({.01});
         }
     }
-};
+}
