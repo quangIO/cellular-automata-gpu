@@ -1,10 +1,10 @@
 
 
 # Simulation
-* [x] White cell: urban cell
+* [x] Green cell: urban cell
 * [x] Black cell: non urban cell
 * [x] Basic visualization (black and white)
-* [ ] Blue cell: road
+* [x] Load image and config from disk
 * [ ] Pretty visualization
 
 # Rule
@@ -53,7 +53,7 @@ TODO
 # Installation
 ## Dependencies
 ### Arch Linux
-Just run `sudo pacman -Sy cuda cmake gcc arrayfire` to install everything
+Run `sudo pacman -Sy cuda cmake gcc arrayfire` to install everything
 
 ### Ubuntu/Debian based
 `sudo apt-get install libarrayfire-unified-dev` should work
@@ -62,7 +62,12 @@ Just run `sudo pacman -Sy cuda cmake gcc arrayfire` to install everything
 * CMake to build the project
 * [ArrayFire](http://arrayfire.org/docs/installing.htm) 
 * Cuda/OpenCL is needed if you want to run the simulation on GPU
+
+### Win64 Binary
+* Install [ArrayFire](https://arrayfire.com/download/) and allow the installer to modify your computer's environment variables
 ## Building
+* Grab the binary
+
 Load it in CLion or  other IDE or build it manually with
 ```bash
 mkdir build 

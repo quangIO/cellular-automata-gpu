@@ -5,7 +5,6 @@
 #include <string>
 #include <arrayfire.h>
 #include <memory>
-#include "inireader.h"
 
 namespace IO {
     namespace {

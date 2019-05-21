@@ -1,0 +1,11 @@
+[land]
+[land.breed]
+factors = [0.001]
+
+[land.spread]
+threshold = 100
+factor = 0.002
+
+[road]
+[road.breed]
+factors = [0.005]
