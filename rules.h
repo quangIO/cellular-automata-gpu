@@ -64,8 +64,8 @@ namespace Rule {
             }
             return ret;
         }
-
-        inline af::array urbanize(const af::array &probabilities) {
+        template <typename T>
+        inline af::array urbanize(const T &probabilities) {
             return af::randu(SIMULATION_SIZE) < probabilities * policy;
         }
 

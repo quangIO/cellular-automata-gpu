@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         frame_count++;
 
         {
-            af::array diffusion = Rule::urbanize(af::constant(Parameter::Land::Diffusion::factor, SIMULATION_SIZE));
+            af::array diffusion = Rule::urbanize(Parameter::Land::Diffusion::factor);
             land = (land + diffusion) > 0;
         }
 
