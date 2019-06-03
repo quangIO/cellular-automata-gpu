@@ -4,7 +4,6 @@
 #include "rules.h"
 #include "visualizer.h"
 
-#define ACCURATE
 
 int main(int argc, char *argv[]) {
     // Parameter::Base::a;
@@ -17,7 +16,7 @@ int main(int argc, char *argv[]) {
     Rule::init("config.toml");
 
 
-    af::array land = af::loadImage("land.png") > 0;
+    auto land = af::loadImage("land.png");
     af::array road = af::loadImage("road.png") > 0;
     Rule::policy = af::loadImage("policy.png") / 255;
 
@@ -26,52 +25,48 @@ int main(int argc, char *argv[]) {
     SIMULATION_SIZE = land.dims();
 
     while (!stateWindow.close()) {
-        af::timer delay = af::timer::start();
-        af::array display = af::join(2, road.as(f32), land.as(f32), road.as(f32));
-        stateWindow.image(display.as(f32)); // TODO: Pretty visualization
+        // af::timer delay = af::timer::start();
+        // af::array display = af::join(2, road.as(f32), land.as(f32), road.as(f32));
+        // stateWindow.image(display.as(f32));
         frame_count++;
 
         {
             af::array diffusion = Rule::urbanize(Parameter::Land::Diffusion::factor);
             land = (land + diffusion) > 0;
         }
-
         {
             static std::vector<af::array> breedMasks = Rule::Breed::generate(Parameter::Land::Breed::factors);
             af::array neighbour = Rule::countNeighbours(land, 0);
             af::array breed = Rule::urbanize(1 - af::pow(breedMasks[0], neighbour));
             land = (land + breed) > 0;
         }
-
         {
             af::array region = af::regions(land.as(b8), AF_CONNECTIVITY_8);
-            uint nRegions = af::max<uint>(region);
-#ifndef ACCURATE
-            af::array regionSize = Rule::getRegionSizes(region, nRegions);
-            af::array edgeMask = (af::maxfilt(regionSize) > Rule::Spread::threshold);
-            af::array spread = Rule::urbanize(edgeMask * Rule::Spread::factor);
-            land = ((land + spread) > 0).as(f32);
-#else
-            for (int i = 1; i <= nRegions; ++i) {
-                af::array regionMask = region == i;
-                uint regionSize = af::count<uint>(regionMask);
-                float probability = Rule::Spread::calculateProbability(regionSize, Parameter::Land::Spread::threshold,
-                                                                       Parameter::Land::Spread::factor);
-                af::array edge = probability * af::maxfilt(regionMask);
-                af::array spread = Rule::urbanize(edge);
-                land = (land + spread) > 0;
-            }
-#endif
-        }
+            uint numberOfRegion = af::max<uint>(region);
 
+            af::array hist = af::histogram(region, numberOfRegion);
+            auto feasibleRegions = af::where(hist > Parameter::Land::Spread::threshold);
+            auto feasibleRegionsHost = feasibleRegions.host<uint>();
+
+            af::array mask = region > 0;
+            for (size_t i = 0; i < feasibleRegions.dims(0); ++i)
+                mask = mask & (feasibleRegionsHost[i] != region);
+            float probability = Parameter::Land::Spread::factor;
+            af::array edge = probability * af::maxfilt(mask);
+            af::array spread = Rule::urbanize(edge);
+            land = (land + spread) > 0;
+            af::freeHost(feasibleRegionsHost);
+        }
         {
             static std::vector<af::array> breedMasks = Rule::Breed::generate(Parameter::Road::Breed::factors);
             af::array neighbour = Rule::countNeighbours(road, 0);
             af::array breed = Rule::urbanize(1 - af::pow(breedMasks[0], neighbour));
             land = (land + breed) > 0;
         }
-        static double fps = 60;
-        while (af::timer::stop(delay) < (1 / fps)) {}
+        if (frame_count % 10 == 0)
+            std::cout << frame_count << std::endl;
+        // static double fps = 60;
+        // while (af::timer::stop(delay) < (1 / fps)) {}
     }
     std::cout << frame_count;
 }

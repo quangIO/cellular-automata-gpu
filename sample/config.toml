@@ -1,9 +1,12 @@
 [land]
+[land.diffusion]
+factor = 0.000
+
 [land.breed]
-factors = [0.001]
+factors = [0.0001]
 
 [land.spread]
-threshold = 100
+threshold = 1000
 factor = 0.002
 
 [road]
