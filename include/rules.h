@@ -4,21 +4,25 @@
 #include <vector>
 #include <memory>
 #include <cassert>
-#include "parameter.h"
+#include <parameter.h>
 
-typedef unsigned uint;
-
-static af::dim4 SIMULATION_SIZE(100, 100);
+struct Input {
+    inline static std::vector<af::array> policies;
+    inline static std::vector<af::array> lands;
+    inline static std::vector<af::array> roads;
+    inline static af::dim4 SIMULATION_SIZE;
+    static void init();
+};
 
 namespace Rule {
-    af::array policy;
+
     namespace Breed {
-        std::vector<af::array> generate(const std::vector<float> &factors) {
+        static std::vector<af::array> generate(const std::vector<float> &factors) {
             std::vector<af::array> masks;
             masks.reserve(factors.size());
             for (float factor: factors) {
                 assert(factor > 0 && factor < 1);
-                masks.emplace_back(af::constant(1 - factor, SIMULATION_SIZE));
+                masks.emplace_back(af::constant(1 - factor, Input::SIMULATION_SIZE));
             }
             return masks;
         }
@@ -30,10 +34,10 @@ namespace Rule {
         }
     }
 
-    namespace Kernels {
-        std::vector<af::array> neighboursCountKernels;
+    struct Kernels {
+        inline static std::vector<af::array> neighboursCountKernels;
 
-        void generate(uint nLayers) {
+        static void generate(uint nLayers) {
             neighboursCountKernels.clear();
             for (uint i = 1; i <= nLayers; ++i) {
                 uint m = 1u << i | 1u;
@@ -47,7 +51,7 @@ namespace Rule {
                 neighboursCountKernels.emplace_back(t);
             }
         }
-    }
+    };
 
 
     namespace {
@@ -56,21 +60,13 @@ namespace Rule {
             return af::convolve(grid, Kernels::neighboursCountKernels[offset]);
         }
 
-        inline af::array getRegionSizes(const af::array &regions, uint nRegions) {
-            af::array ret = af::constant(0, SIMULATION_SIZE);
-            for (uint i = 1; i <= nRegions; ++i) {
-                auto current = (regions == i).as(f32);
-                ret = ret + current * af::count<float>(current);
-            }
-            return ret;
-        }
         template <typename T>
-        inline af::array urbanize(const T &probabilities) {
-            return af::randu(SIMULATION_SIZE) < probabilities * policy;
+        inline af::array urbanize(const T &probabilities, uint year = 0) {
+            return af::randu(Input::SIMULATION_SIZE) < probabilities * Input::policies[year];
         }
 
-        void init(const std::string &path) {
-            Parameter::init(path);
+        void init() {
+            Input::init();
             Kernels::generate(10);
         }
     }

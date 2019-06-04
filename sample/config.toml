@@ -6,7 +6,7 @@ factor = 0.000
 factors = [0.0001]
 
 [land.spread]
-threshold = 1000
+threshold = 100
 factor = 0.002
 
 [road]
