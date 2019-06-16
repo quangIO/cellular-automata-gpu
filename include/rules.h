@@ -6,12 +6,13 @@
 #include <cassert>
 #include <parameter.h>
 
-struct Input {
-    inline static std::vector<af::array> policies;
-    inline static std::vector<af::array> lands;
-    inline static std::vector<af::array> roads;
-    inline static af::dim4 SIMULATION_SIZE;
-    static void init();
+namespace Input {
+    extern std::vector<af::array> policies;
+    extern std::vector<af::array> lands;
+    extern std::vector<af::array> roads;
+    extern af::dim4 SIMULATION_SIZE;
+    void init();
+    void clear();
 };
 
 namespace Rule {
