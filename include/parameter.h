@@ -1,9 +1,11 @@
 #pragma once
 #include "helper/cpptoml.h"
 
-static int YEARS = 1;
+static uint YEARS = 3;
 
 struct Parameter {
+    Parameter() = default;
+
     struct Land {
         std::vector<float> breed_factors = {0.01f};
         float diffusion_factor = 0;

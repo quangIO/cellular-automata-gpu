@@ -21,7 +21,7 @@ namespace Rule {
             std::vector<af::array> masks;
             masks.reserve(factors.size());
             for (float factor: factors) {
-                assert(factor > 0 && factor < 1);
+                assert(factor >= 0 && factor <= 1);
                 masks.emplace_back(af::constant(1 - factor, Input::SIMULATION_SIZE));
             }
             return masks;
